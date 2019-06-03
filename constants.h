@@ -18,15 +18,14 @@
 #define trecordstep 0.5 //determines how often to record
 #define save_one_var 0 //Instead of saving all 14 vars, save just 1 (specified in write_data)
 #define start_at_steady 1 //Start at steady state?
+#define spatial_uniform 0 // Used for initiation(uniform=one point used)
 
 
 //Solver Type Options
-#define use_en_deriv 1 //if true, will use the derivative of the electroneutrality condition for the system of equations
-#define separate_vol 1 //if true, will solve c,phi separate from alpha.
-#define Linear_Diffusion 0 //Changes to a linear discretization of electrodiffusion.
 #define Predictor 0  // Turns on predictor. Adaptive single point estimated update
 #define width_size  1 //Number of up,down,left,right neighbors to pair in the predictor.
 #define Max_Grid_Refine 256 // Max number of time steps to refine in grid predictor
+#define use_multi_grid 0 //if the domain size is above 64x64 this will help
 
 //basic ion extern constants
 #define   Ni  4          //number of ion species (Na, K, Cl)
@@ -47,8 +46,7 @@ static const PetscReal DExtraMult[2] = {1.0,1.0};
 
 //number of variables to be solved for at each grid point
 //#define  Nv  ((Ni+2)*Nc-1) //version if volume is included
-//#define  Nv  ((Ni+1)*Nc) //version if volume is excluded
-#define Nv  (((Ni+2)*Nc-1)*(!separate_vol)+((Ni+1)*Nc)*separate_vol)  //combining the above two with the separate_vol
+#define  Nv  ((Ni+1)*Nc) //version if volume is excluded
 
 //Newton solve parameters
 #define  itermax  20      //maximum Newton iterations allowed

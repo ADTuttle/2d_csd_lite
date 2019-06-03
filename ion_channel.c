@@ -76,16 +76,14 @@ void mcGoldman(struct FluxData *flux,PetscInt index,PetscReal pc,PetscInt zi,Pet
 void glutamate_flux(struct FluxData *flux,PetscInt x,PetscInt y,struct SimState *state_vars,struct SimState *state_vars_past,
                     PetscInt Nx,PetscReal Glut_Excite)
 {
-    PetscReal Glu_n,Glu_g,Glu_np,Glu_gp,vn,vg,NaGlu,ce;
+    PetscReal Glu_n,Glu_np,Glu_gp,vn,ce;
 
     Glu_n = state_vars->c[c_index(x,y,0,3,Nx)];
-    Glu_g = state_vars->c[c_index(x,y,1,3,Nx)];
     Glu_np = state_vars_past->c[c_index(x,y,0,3,Nx)];
     Glu_gp= state_vars_past->c[c_index(x,y,1,3,Nx)];
     ce= state_vars_past->c[c_index(x,y,Nc-1,3,Nx)];
     vn = state_vars->phi[phi_index(x,y,0,Nx)]-state_vars->phi[phi_index(x,y,Nc-1,Nx)];
-    vg = state_vars->phi[phi_index(x,y,1,Nx)]-state_vars->phi[phi_index(x,y,Nc-1,Nx)];
-// /*
+
     PetscReal frac = 1.0/(Glu_n+glut_eps);//1.0/(pow(cn,1.19)+glut_eps);//
     PetscReal expo = 0.76e-3*exp(-0.0044*pow(vn*RTFC-8.66,2));
 
@@ -1186,9 +1184,13 @@ void excitation_grid(struct AppCtx* user,PetscReal t,PetscInt xi,PetscInt yi)
         for(PetscInt j = 0; j < Ny; j++){
             if(i+xi == 0 && j+yi == 0){
                 pany = pmax*pow(sin(pi*t/texct),2)*RTFC/FC;
-                exct->pNa[xy_index(i,j,Nx)] = pany;
-                exct->pK[xy_index(i,j,Nx)] = pany;
-                exct->pCl[xy_index(i,j,Nx)] = pany;
+                exct->pNa[xy_index(i,j,Nx)] = 0;//pany;
+                exct->pK[xy_index(i,j,Nx)] = 0;//pany;
+                exct->pCl[xy_index(i,j,Nx)] = 0;//pany;
+            }else{
+                exct->pNa[xy_index(i,j,Nx)] = 0;
+                exct->pK[xy_index(i,j,Nx)] = 0;
+                exct->pCl[xy_index(i,j,Nx)] = 0;
             }
 
         }

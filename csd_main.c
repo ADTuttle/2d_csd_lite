@@ -133,10 +133,13 @@ int main(int argc, char **argv)
         restore_subarray(current_state,state_vars);
         extract_subarray(current_state,state_vars);
         //Open files to write to
-        fp = fopen("data_csd.txt","a");
-        user->fp = fopen("point_csd.txt","a");
+        fp = fopen("data_csd.txt","w");
+        extract_subarray(current_state,state_vars);
+        write_data(fp,user,numrecords,1);
+        user->fp = fopen("point_csd.txt","w");
         if(Predictor) {
-            fdt = fopen("csd_dt.txt", "a");
+            fdt = fopen("csd_dt.txt", "w");
+            save_timestep(fdt,user,numrecords-1,1);
         }
         record_measurements(fp_measures,user,1,numrecords,1);
     }
@@ -165,9 +168,9 @@ int main(int argc, char **argv)
         //Save the "current" aka past state
         ierr = restore_subarray(user->state_vars_past->v, user->state_vars_past);CHKERRQ(ierr);
         ierr = copy_simstate(current_state, user->state_vars_past);CHKERRQ(ierr);
-        if (separate_vol) {
-            memcpy(user->state_vars_past->alpha, user->state_vars->alpha,sizeof(PetscReal) * user->Nx * user->Ny * (Nc - 1));
-        }
+
+        memcpy(user->state_vars_past->alpha, user->state_vars->alpha,sizeof(PetscReal) * user->Nx * user->Ny * (Nc - 1));
+
 
         //Predict if chosen
         if(Predictor) {
@@ -186,10 +189,9 @@ int main(int argc, char **argv)
                 grid_ksp_old = ksp_iters_new;
             }
         }
-        if(separate_vol) {
-            //Update volume(uses past c values for wflow)
-            volume_update(user->state_vars, user->state_vars_past, user);
-        }
+        //Update volume(uses past c values for wflow)
+        volume_update(user->state_vars, user->state_vars_past, user);
+
         //Update diffusion with past
 //        compute diffusion coefficients
         diff_coef(user->Dcs,state_vars_past->alpha,1,user);
@@ -251,7 +253,7 @@ int main(int argc, char **argv)
 //            write_point(fp, user,numrecords, 0);
             write_data(fp, user,numrecords, 0);
             record_measurements(fp_measures,user,count,numrecords,0);
-            if(count%1000){
+            if(count%1000){ //Open and close file to avoid memory issues
                 fclose(fp);
                 fp = fopen("data_csd.txt","a");
             }

@@ -4,102 +4,6 @@
 #include <math.h>
 
 
-void print_all(struct AppCtx *user)
-{
-    PetscReal *Dcs = user->Dcs;
-    PetscReal *Dcb = user->Dcb;
-    struct ConstVars *con_vars = user->con_vars;
-    struct FluxData *flux = user->flux;
-    struct GateType *gvars = user->gate_vars;
-    struct SimState *state_vars = user->state_vars;
-    struct Solver *slvr = user->slvr;
-    PetscInt Nx = user->Nx;
-    PetscInt Ny = user->Ny;
-    printf("ConstVars:\n");
-    printf("%f,%f,%f\n",1e6*con_vars->pNaKCl[0],1e6*con_vars->Imax[0],1e6*con_vars->pNaLeak[0]);
-    printf("%f,%f\n",1e6*con_vars->Imaxg[0],1e6*con_vars->pNaLeakg[0]);
-    printf("%f,%f,%f\n",con_vars->ao[0],con_vars->ao[1],con_vars->ao[2]);
-    printf("%f,%f,%f\n",con_vars->zo[0],con_vars->zo[1],con_vars->zo[2]);
-    printf("%f,%f,%f\n",con_vars->kappa,con_vars->zeta1[0],con_vars->zeta1[1]);
-    printf("%d,%f,%f\n",con_vars->S,1e6*con_vars->zetaalpha[0],1e6*con_vars->zetaalpha[1]);
-
-    //Diffusion in each compartment
-    //Has x and y components
-    //x will be saved at even positions (0,2,4,...)
-    //y at odd (1,3,5,...)
-    //still use c_index(x,y,comp,ion,Nx), but with ind*2 or ind*2+1
-
-    for(PetscInt ion=0;ion<Ni;ion++)
-    {
-        for(PetscInt comp=0;comp<Nc;comp++)
-        {
-            printf("Dcs: Ion %d, Comp %d ",ion,comp);
-            printf("Dcs x: %.10e, Dcs y: %.10e\n",Dcs[c_index(0,0,comp,ion,Nx)*2],Dcs[c_index(0,0,comp,ion,Nx)*2+1]);
-        }
-    }
-    printf("\n");
-
-    //Bath diffusion
-
-    for(PetscInt ion=0;ion<Ni;ion++)
-    {
-        for(PetscInt comp=0;comp<Nc;comp++)
-        {
-            printf("Dcb: Ion %d, Comp %d ",ion,comp);
-            printf("Dcb x: %.10e, Dcb y: %.10e\n",Dcb[c_index(0,0,comp,ion,Nx)*2],Dcb[c_index(0,0,comp,ion,Nx)*2+1]);
-        }
-    }
-
-    PetscInt x=0;PetscInt y=0;
-    printf("\n");
-    for(PetscInt ion=0;ion<Ni;ion++)
-    {
-        for(PetscInt comp=0;comp<Nc;comp++)
-        {
-            printf("Ion: %d, Comp %d, C: %10e\n",ion,comp,state_vars->c[c_index(0,0,comp,ion,Nx)]);
-        }
-    }
-    for(PetscInt comp=0;comp<Nc;comp++)
-    {
-        printf("Comp %d, Phi: %f\n",comp,state_vars->phi[phi_index(0,0,comp,Nx)]*RTFC);
-    }
-    for(PetscInt comp=0;comp<Nc-1;comp++)
-    {
-        printf("Comp %d, alpha: %.10e\n",comp,state_vars->alpha[al_index(0,0,comp,Nx)]);
-    }
-    printf("Gvars:\n");
-    printf("NaT :%.10e,%.10e,%.10e\n",gvars->mNaT[0],gvars->hNaT[0],gvars->gNaT[0]);
-    printf("NaP :%.10e,%.10e,%.10e\n",gvars->mNaP[0],gvars->hNaP[0],gvars->gNaP[0]);
-    printf("KDR :%.10e,%.10e\n",gvars->mKDR[0],gvars->gKDR[0]);
-    printf("KA :%.10e,%.10e,%.10e\n",gvars->mKA[0],gvars->hKA[0],gvars->gKA[0]);
-    printf("NMDA :%.10e,%.10e\n",gvars->yNMDA[0],gvars->gNMDA[0]);
-    printf("\n");
-    //Compute membrane ionic flux relation quantitites
-
-    for(PetscInt ion=0;ion<Ni;ion++)
-    {
-        for(PetscInt comp=0;comp<Nc;comp++)
-        {
-            printf("Ion: %d, Comp %d\n",ion,comp);
-            printf("Flux: %.10e, dfdci: %.10e, dfdce: %.10e, dfdphim: %.10e\n",flux->mflux[c_index(0,0,comp,ion,Nx)],flux->dfdci[c_index(0,0,comp,ion,Nx)],flux->dfdce[c_index(0,0,comp,ion,Nx)],flux->dfdphim[c_index(0,0,comp,ion,Nx)]);
-        }
-    }
-    printf("\n");
-    //Compute membrane water flow related quantities
-    for(PetscInt comp=0;comp<Nc-1;comp++)
-    {
-        printf("Comp: %d\n",comp);
-        printf("wFlux: %.10e,%.10e,%.10e\n",flux->wflow[al_index(x,y,comp,Nx)],flux->dwdpi[al_index(x,y,comp,Nx)],flux->dwdal[al_index(x,y,comp,Nx)]);
-    }
-    printf("\n");
-    // VecView(slvr->Res,PETSC_VIEWER_STDOUT_SELF);
-
-    // VecView(slvr->Q,PETSC_VIEWER_STDOUT_SELF);
-
-    return;
-
-}
-
 const char* getfield(char* line, int num)
 {
     const char* tok;
@@ -111,114 +15,6 @@ const char* getfield(char* line, int num)
             return tok;
     }
     return NULL;
-}
-
-void find_print(int rowC, int colC, double valC, int iter)
-{
-
-    if(iter!=-1){
-        return;
-    }
-//    printf("%d,%d,%.10e\n",rowC,colC,valC);
-//    return;
-    if(rowC>70){
-        return;
-    }
-
-    int row,col;
-    double val;
-
-    //Open Julia Mat file.
-    FILE *fp;
-    fp = fopen("../../../Julia_work/2d_modules/matrix.txt","r");
-    if(fp==NULL)
-    {
-        fprintf(stderr, "File not found....\n");
-        exit(EXIT_FAILURE); /* indicate failure.*/
-    }
-
-    //Begin searching for the right row and col.
-    char line[1024];
-    while (fgets(line, 1024, fp))
-    {
-        char* tmp = strdup(line);
-        row = -1; col=-1; val=0;
-
-        row = atoi(getfield(tmp,1));
-
-
-        tmp = strdup(line);
-        col = atoi(getfield(tmp,2));
-
-        if(row==rowC && col==colC)
-        {
-            tmp = strdup(line);
-            val = atof(getfield(tmp,3));
-            if(val!=0) {
-                if (fabs(val - valC)/fabs(val) > 5e-16) {
-                    printf("Row: %d, Col: %d, J: %f, C: %f, Diff: %fe-16\n", row, col, val, valC,
-                           1e16 * (val - valC) / val);
-                }
-            }
-            /*
-            if(val==0){
-                    printf("Row: %d, Col: %d, J: %f, C: %f, Diff: %fe-16\n",row,col,val,valC,1e16*(val-valC));
-
-            }
-            else{
-                    printf("Row: %d, Col: %d, J: %f, C: %f, Diff: %fe-16,Abs: %f\n",row,col,val,valC,1e16*(val-valC)/val,1e16*(val-valC));
-            }
-             */
-            return;
-        }
-        free(tmp);
-    }
-
-
-    fclose(fp);
-    return;
-
-}
-
-void compare_res(double *Res, int iter)
-{
-    if(iter!=-1){
-        return;
-    }
-
-    FILE *fp;
-    fp = fopen("../../../Julia_work/2d_modules/Res.txt","r");
-    if(fp==NULL)
-    {
-        fprintf(stderr, "File not found....\n");
-        exit(EXIT_FAILURE); /* indicate failure.*/
-    }
-
-    //Begin searching for the right row and col.
-    char line[1024];
-    int row=0;
-    double val;
-    while (fgets(line, 1024, fp))
-    {
-        char* tmp = strdup(line);
-        val=0;
-        val = atof(getfield(tmp,1));
-
-        if(val==0){
-            printf("Row: %d, J: %.10e, C: %.10e, diff: %.10e\n",row,val,Res[row],val-Res[row]);
-        }else{
-            printf("Row: %d, J: %.10e, C: %.10e,abs: %.10e, diff: %.10e\n",row,val,Res[row],val-Res[row],(val-Res[row])/val);
-        }
-        row++;
-        if(row>70){
-            break;
-        }
-        free(tmp);
-    }
-
-
-    fclose(fp);
-    return;
 }
 
 void write_data(FILE *fp,struct AppCtx*user,PetscInt numrecords,int start)
@@ -347,7 +143,6 @@ void save_timestep(FILE *fp,struct AppCtx*user,PetscInt numrecords,int start)
 
 void record_measurements(FILE **fp_measures,struct AppCtx *user,PetscInt count,PetscInt numrecords,int start){
     if(start){
-        if(start_at_steady) {
             fp_measures[0] = fopen("flux_csd.txt", "w");
             fp_measures[1] = fopen("grad_field.txt", "w");
             fp_measures[2] = fopen("measures.txt", "w");
@@ -356,11 +151,6 @@ void record_measurements(FILE **fp_measures,struct AppCtx *user,PetscInt count,P
             velocity_field(fp_measures[1],user,numrecords,start);
 //            calculate_measures(fp_measures[2],user,numrecords,start);
             calculate_energy(fp_measures[2],user,numrecords,start);
-        }else{
-            fp_measures[0] = fopen("flux_csd.txt", "a");
-            fp_measures[1] = fopen("grad_field.txt", "a");
-            fp_measures[2] = fopen("measures.txt", "a");
-        }
     } else{
         measure_flux(fp_measures[0],user,numrecords,start);
         velocity_field(fp_measures[1],user,numrecords,start);
@@ -378,8 +168,7 @@ void measure_flux(FILE *fp, struct AppCtx* user,PetscInt numrecords,int start)
     PetscInt Nx = user->Nx;
     PetscInt Ny = user->Ny;
     if (start) {
-        fprintf(fp, "%d,%d,%d,%d,%d,%d,%d,%d\n", Nx, Ny, numrecords, Nc, Ni, use_en_deriv, separate_vol,
-                Linear_Diffusion);
+        fprintf(fp, "%d,%d,%d,%d,%d\n", Nx, Ny, numrecords, Nc, Ni);
         measure_flux(fp, user, numrecords, 0);
     } else{
         //compute diffusion coefficients
@@ -967,40 +756,14 @@ void read_file(struct AppCtx *user)
     free(tmp);
     free(line);
     fclose(fp);
-    return;
-    //Modify beginning of file
-    fp = fopen("data_csd.txt", "r");
-    if (fp == NULL) {
-        fprintf(stderr, "File not found....\n");
-        exit(EXIT_FAILURE); /* indicate failure.*/
-    }
-    //Read top file details
-    fgets(line, 1024 * 1024, fp);
 
-    tmp = strdup(line);
-
-    Nx = atoi(getfield(tmp, 1));
-
-    tmp = strdup(line);
-    Ny = atoi(getfield(tmp, 2));
-
-    tmp = strdup(line);
-    numrecords = atoi(getfield(tmp, 3));
-    fclose(fp);
-
-    fp = fopen("data_csd.txt","r+");
-    fseek( fp, 0, SEEK_SET );
-    fprintf(fp, "%d,%d,%d,%d,%d\n", Nx, Ny, numrecords+(PetscInt)floor(Time/trecordstep)-1, Nc, Ni);
-
-    fclose(fp);
 }
 
 void velocity_field(FILE *fp,struct AppCtx *user,PetscInt numrecords,int start) {
 
 
     if (start) {
-            fprintf(fp, "%d,%d,%d,%d,%d,%d,%d,%d\n", user->Nx, user->Ny, numrecords, Nc, Ni, use_en_deriv, separate_vol,
-                    Linear_Diffusion);
+            fprintf(fp, "%d,%d,%d,%d,%d\n", user->Nx, user->Ny, numrecords, Nc, Ni);
 
         velocity_field(fp, user, numrecords, 0);
     } else {

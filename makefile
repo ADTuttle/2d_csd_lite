@@ -1,7 +1,5 @@
 
-PETSC_DIR=/Users/Austin/Documents/C_Progs/petsc-3.9.1/arch-darwin-c-debug
-# PETSC_DIR=/Users/Austin/Documents/C_Progs/petsc-3.7.7/arch-darwin-c-opt
-#PETSC_DIR=/Users/Austin/Documents/C_Progs/petsc-3.9.1/arch-darwin-c-opt
+PETSC_DIR=/Users/Austin/Documents/C_Progs/petsc-3.11.2/arch-darwin-c-debug
 
 # include ${PETSC_DIR}/lib/petsc/conf/variables
 # include ${PETSC_DIR}/lib/petsc/conf/rules
@@ -48,8 +46,5 @@ debug:
 
 	rm csd_main.o initialize.o linear_update.o ion_channel.o array_function.o update_solution.o misc_print_plot.o
 
-ex1: ex1.o  chkopts
-	-${CLINKER} -o ex1 ex1.o  ${PETSC_KSP_LIB}
-	${RM} ex1.o
 
 

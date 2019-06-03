@@ -55,22 +55,9 @@ PetscErrorCode init_simstate(Vec state,struct SimState *state_vars,struct AppCtx
     ierr = ISCreateGeneral(PETSC_COMM_WORLD,Nx*Ny*Nc,phi_ind,PETSC_COPY_VALUES,&state_vars->phi_ind); CHKERRQ(ierr);
 
     free(phi_ind);free(c_ind);
-    if(!separate_vol) {
-        PetscInt *al_ind = (PetscInt *) malloc(sizeof(PetscInt)*Nx*Ny*(Nc-1));
-        for (x = 0; x < Nx; x++) {
-            for (y = 0; y < Ny; y++) {
-                for (comp = 0; comp < Nc - 1; comp++) {
-                    al_ind[al_index(x, y, comp,Nx)] = Ind_1(x, y, Ni + 1, comp,Nx);
-                }
-            }
-        }
-        ierr = ISCreateGeneral(PETSC_COMM_WORLD, Nx * Ny * (Nc - 1), al_ind, PETSC_COPY_VALUES, &state_vars->al_ind);
-        CHKERRQ(ierr);
-        free(al_ind);
-    }
-    else{
-        state_vars->alpha = (PetscReal*)malloc(sizeof(PetscReal)*Nx*Ny*(Nc-1));
-    }
+
+    state_vars->alpha = (PetscReal*)malloc(sizeof(PetscReal)*Nx*Ny*(Nc-1));
+
     extract_subarray(state,state_vars);
     return ierr;
 }
@@ -86,12 +73,7 @@ PetscErrorCode extract_subarray(Vec state,struct SimState *state_vars)
 
     ierr = VecGetSubVector(state,state_vars->phi_ind,&state_vars->phi_vec); CHKERRQ(ierr);
     ierr = VecGetArray(state_vars->phi_vec,&state_vars->phi); CHKERRQ(ierr);
-    if(!separate_vol) {
-        ierr = VecGetSubVector(state, state_vars->al_ind, &state_vars->al_vec);
-        CHKERRQ(ierr);
-        ierr = VecGetArray(state_vars->al_vec, &state_vars->alpha);
-        CHKERRQ(ierr);
-    }
+
     if(Profiling_on) {
         PetscLogEventEnd(event[2], 0, 0, 0, 0);
     }
@@ -113,13 +95,7 @@ PetscErrorCode restore_subarray(Vec state,struct SimState *state_vars)
     ierr = VecRestoreArray(state_vars->phi_vec,&state_vars->phi); CHKERRQ(ierr);
     ierr = VecRestoreSubVector(state,state_vars->phi_ind,&state_vars->phi_vec); CHKERRQ(ierr);
 
-    if(!separate_vol) {
-        ierr = VecRestoreArray(state_vars->al_vec, &state_vars->alpha);
-        CHKERRQ(ierr);
-        ierr = VecRestoreSubVector(state, state_vars->al_ind, &state_vars->al_vec);
-        CHKERRQ(ierr);
-        state_vars->alpha = NULL;
-    }
+
 
     state_vars->c = NULL;
     state_vars->phi = NULL;
@@ -141,12 +117,7 @@ PetscErrorCode extract_subarray_Read(Vec state,struct SimState *state_vars)
 
     ierr = VecGetSubVector(state,state_vars->phi_ind,&state_vars->phi_vec); CHKERRQ(ierr);
     ierr = VecGetArrayRead(state_vars->phi_vec,&state_vars->phi); CHKERRQ(ierr);
-    if(!separate_vol) {
-        ierr = VecGetSubVector(state, state_vars->al_ind, &state_vars->al_vec);
-        CHKERRQ(ierr);
-        ierr = VecGetArrayRead(state_vars->al_vec, &state_vars->alpha);
-        CHKERRQ(ierr);
-    }
+
     if(Profiling_on) {
         PetscLogEventEnd(event[2], 0, 0, 0, 0);
     }
@@ -168,13 +139,6 @@ PetscErrorCode restore_subarray_Read(Vec state,struct SimState *state_vars)
     ierr = VecRestoreArrayRead(state_vars->phi_vec,&state_vars->phi); CHKERRQ(ierr);
     ierr = VecRestoreSubVector(state,state_vars->phi_ind,&state_vars->phi_vec); CHKERRQ(ierr);
 
-    if(!separate_vol) {
-        ierr = VecRestoreArrayRead(state_vars->al_vec, &state_vars->alpha);
-        CHKERRQ(ierr);
-        ierr = VecRestoreSubVector(state, state_vars->al_ind, &state_vars->al_vec);
-        CHKERRQ(ierr);
-        state_vars->alpha = NULL;
-    }
 
     state_vars->c = NULL;
     state_vars->phi = NULL;

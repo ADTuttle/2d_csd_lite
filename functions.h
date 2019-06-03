@@ -78,25 +78,9 @@ PetscErrorCode newton_solve(Vec,struct Solver*,struct AppCtx*);
 //Calculate residuals and jacobians
 
 //Nonlinear discretizations
-// Derivative of CC with volume
-PetscErrorCode calc_residual(SNES,Vec,Vec,void*); //void is masked AppCtx
-PetscErrorCode calc_jacobian(SNES, Vec, Mat,Mat, void*); //void is masked AppCtx
 //Derivative of CC with no volume
 PetscErrorCode calc_residual_no_vol(SNES,Vec,Vec,void*); //void is masked AppCtx
 PetscErrorCode calc_jacobian_no_vol(SNES, Vec, Mat,Mat, void*); //void is masked AppCtx
-//Algebraic CC with volume
-PetscErrorCode calc_residual_algebraic(SNES,Vec,Vec,void*); //void is masked AppCtx
-PetscErrorCode calc_jacobian_algebraic(SNES, Vec, Mat,Mat, void*); //void is masked AppCtx
-//Algebraic CC with no volume
-PetscErrorCode calc_residual_algebraic_no_vol(SNES,Vec,Vec,void*); //void is masked AppCtx
-PetscErrorCode calc_jacobian_algebraic_no_vol(SNES, Vec, Mat,Mat, void*); //void is masked AppCtx
-
-//Linear discretizations
-// Linear system Algebraic CC with no volume
-PetscErrorCode calc_residual_linear_algebraic(SNES,Vec,Vec,void*); //void is masked AppCtx
-PetscErrorCode calc_jacobian_linear_algebraic(SNES, Vec, Mat,Mat, void*); //void is masked AppCtx
-PetscErrorCode calc_residual_linear_deriv(SNES,Vec,Vec,void*); //void is masked AppCtx
-PetscErrorCode calc_jacobian_linear_deriv(SNES, Vec, Mat,Mat, void*); //void is masked AppCtx
 
 
 //Functions used in Grid solves
@@ -106,8 +90,7 @@ void gatevars_update_grid(struct GateType *,struct SimState *,PetscReal ,struct 
 void excitation_grid(struct AppCtx* ,PetscReal ,PetscInt, PetscInt);
 void grid_diff_coef(PetscReal *,const PetscReal *,PetscReal ,struct AppCtx* ,PetscInt,PetscInt);
 
-PetscErrorCode Grid_Residual(Vec ,PetscInt ,PetscInt ,void *);
-PetscErrorCode Grid_Jacobian(Mat ,PetscInt ,PetscInt ,void *);
+
 PetscErrorCode Grid_Residual_algebraic(Vec ,PetscInt ,PetscInt ,void *);
 PetscErrorCode Grid_Jacobian_algebraic(Mat ,PetscInt ,PetscInt ,void *);
 PetscErrorCode Update_Grid(PetscInt ,PetscInt,PetscReal ,struct AppCtx *);
@@ -125,10 +108,7 @@ PetscReal array_diff_max(PetscReal *,PetscReal *,size_t);
 //Calc l2_norm of one array
 PetscReal l2_norm(PetscReal *,size_t);
 
-void print_all(struct AppCtx*);
 const char* getfield(char* , int );
-void find_print(int, int, double, int iter);
-void compare_res(double *, int );
 void write_data(FILE *,struct AppCtx *,PetscInt,int );
 void write_point(FILE *,struct AppCtx *,PetscReal,PetscInt,PetscInt );
 void measure_flux(FILE *,struct AppCtx *,PetscInt,int );
