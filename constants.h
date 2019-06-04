@@ -18,7 +18,7 @@
 #define trecordstep 0.5 //determines how often to record
 #define save_one_var 0 //Instead of saving all 14 vars, save just 1 (specified in write_data)
 #define start_at_steady 1 //Start at steady state?
-#define spatial_uniform 0 // Used for initiation(uniform=one point used)
+#define spatially_uniform 0 // Used for initiation(uniform=one point used)
 
 
 //Solver Type Options
@@ -77,10 +77,6 @@ static const PetscReal cbath[4]={140*1e-3,3.4*1e-3,120*1e-3,1e-8}; //Na, K, Cl, 
 #define Lexct 0.05          //Length of region for excitation in each direction
 //#define Lexct 0.025          //Length of region for excitation in each direction
 
-//initial state setup
-#define rest_state  1        //if true, membrane parameters are set so that the initial voltages and concentrations are at a rest state
-#define spatially_uniform  1 //if true, all initial values and parameters are spatially uniform
-
 
 //set "relaxed" volume fractions and initial volume fractions
 #define  alphaon 0.5         //base neuronal volume fraction
@@ -117,7 +113,7 @@ static const PetscReal cm[2] ={cmt*RTFC/FC/ell,cmt*RTFC/FC/ell};     //membrane 
 #define mK  2e-3                 //pump current constant in mmol/cm^3=mol/l
 #define mNa  7.7e-3              //pump current constant in mmol/cm^3=mol/l
 #define glpump  1.0            //multiplier to change glial pump rate
-#define npump  1.0
+#define npump  1.1
 
 // Glutamate parameters
 #define glut_A  50e-3 //500e-3 //500e-5 //100e-5//500e-5 //(500e-3) //500       //Release rate in mmol/cm^3/sec

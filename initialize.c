@@ -188,138 +188,208 @@ void set_params(Vec state,struct SimState* state_vars,struct ConstVars* con_vars
 void initialize_data(Vec current_state,struct AppCtx *user)
 {
 
-    //Make a temp solver for just a 1x1 grid for speed
-    PetscInt temp_Nx = user->Nx;
-    PetscInt temp_Ny = user->Ny;
-    user->Nx = 1;
-    user->Ny = 1;
-    PetscInt Nx = user->Nx;
-    PetscInt Ny = user->Ny;
+    PetscReal rsd,tol;
+    PetscInt k;
+    if(spatially_uniform){
+        //Make a temp solver for just a 1x1 grid for speed
+        PetscInt temp_Nx = user->Nx;
+        PetscInt temp_Ny = user->Ny;
+        user->Nx = 1;
+        user->Ny = 1;
+        PetscInt Nx = user->Nx;
+        PetscInt Ny = user->Ny;
 
-    struct Solver *slvr = (struct Solver*)malloc(sizeof(struct Solver));
-    //Create Vectors
-    VecCreate(PETSC_COMM_WORLD,&slvr->Q);
-    VecSetType(slvr->Q,VECSEQ);
-    VecSetSizes(slvr->Q,PETSC_DECIDE,Nx*Ny*Nv);
-    VecDuplicate(slvr->Q,&slvr->Res);
-    MatCreate(PETSC_COMM_WORLD,&slvr->A);
-    MatSetType(slvr->A,MATSEQAIJ);
-    MatSetSizes(slvr->A,PETSC_DECIDE,PETSC_DECIDE,Nx*Ny*Nv,Nx*Ny*Nv);
-    MatSeqAIJSetPreallocation(slvr->A,5*Nv,NULL);
-    MatSetUp(slvr->A);
-    initialize_jacobian(slvr->A,user,0);
-    KSPCreate(PETSC_COMM_WORLD,&slvr->ksp);
-    KSPSetType(slvr->ksp,KSPPREONLY);
-    KSPGetPC(slvr->ksp,&slvr->pc);
-    PCSetType(slvr->pc,PCLU);
+        struct Solver *slvr = (struct Solver *) malloc(sizeof(struct Solver));
+        //Create Vectors
+        VecCreate(PETSC_COMM_WORLD,&slvr->Q);
+        VecSetType(slvr->Q,VECSEQ);
+        VecSetSizes(slvr->Q,PETSC_DECIDE,Nx*Ny*Nv);
+        VecDuplicate(slvr->Q,&slvr->Res);
+        MatCreate(PETSC_COMM_WORLD,&slvr->A);
+        MatSetType(slvr->A,MATSEQAIJ);
+        MatSetSizes(slvr->A,PETSC_DECIDE,PETSC_DECIDE,Nx*Ny*Nv,Nx*Ny*Nv);
+        MatSeqAIJSetPreallocation(slvr->A,5*Nv,NULL);
+        MatSetUp(slvr->A);
+        initialize_jacobian(slvr->A,user,0);
+        KSPCreate(PETSC_COMM_WORLD,&slvr->ksp);
+        KSPSetType(slvr->ksp,KSPPREONLY);
+        KSPGetPC(slvr->ksp,&slvr->pc);
+        PCSetType(slvr->pc,PCLU);
 //    PCFactorSetMatSolverPackage(slvr->pc, MATSOLVERSUPERLU);
-    PCFactorSetMatSolverType(slvr->pc, MATSOLVERSUPERLU);
+        PCFactorSetMatSolverType(slvr->pc,MATSOLVERSUPERLU);
 
 
-
-    PetscReal convtol = 1e-9;
-    extract_subarray(current_state,user->state_vars);
-    PetscReal tol =convtol;
-    PetscReal rsd = 1.0;
-    PetscReal rsd_v[3];
-    //Compute Gating variables
-    //compute gating variables
-    gatevars_update(user->gate_vars,user->gate_vars,user->state_vars,0,user,1);
-    gatevars_update(user->gate_vars_past,user->gate_vars_past,user->state_vars,0,user,1);
-    restore_subarray(current_state,user->state_vars);
-
-    //Initialize and compute the excitation (it's zeros here)
-    excitation(user,-1.0);
-    PetscReal dt_temp = user->dt;
-    PetscInt k = 0;
-    user->dt = 0.01;
-
-    // For 1x1 grid Dcs is zeros
-    memset(user->Dcs,0,sizeof(PetscReal)*2*temp_Nx*temp_Ny*Nc*Ni);
-
-    while(rsd>tol && k<1e5)
-    {
+        PetscReal convtol = 1e-9;
         extract_subarray(current_state,user->state_vars);
-        //Save the "current" aka past state
-        restore_subarray(user->state_vars_past->v, user->state_vars_past);
-        copy_simstate(current_state, user->state_vars_past);
-
-        memcpy(user->state_vars_past->alpha, user->state_vars->alpha, sizeof(PetscReal) * user->Nx * user->Ny * (Nc - 1));
-        //Update volume
-        volume_update(user->state_vars, user->state_vars_past, user);
-        //compute diffusion coefficients (Dcs is not used for 1x1)
-        //Bath diffusion
-        diff_coef(user->Dcb,user->state_vars->alpha,Batheps,user);
-        restore_subarray(current_state, user->state_vars);
-
-        // Use own solver since we reuse data structs to update a subset
-        newton_solve(current_state,slvr,user);
-        //Update gating variables
-        extract_subarray(current_state,user->state_vars);
-
-
-        // Set to be "firstpass" (that's the 1)
-        // So that we set to alpha/beta infinity values as if it came to rest
-        gatevars_update(user->gate_vars,user->gate_vars,user->state_vars,user->dt*1e3,user,1);
-
-
-        rsd_v[0] = array_diff_max(user->state_vars->c,user->state_vars_past->c,(size_t)Nx*Ny*Nc*Ni);
-        rsd_v[1] = array_diff_max(user->state_vars->phi,user->state_vars_past->phi,(size_t)Nx*Ny*Nc);
-        rsd_v[2] = array_diff_max(user->state_vars->alpha,user->state_vars_past->alpha,(size_t)Nx*Ny*(Nc-1));
-        rsd = array_max(rsd_v,3);
+        tol = convtol;
+        rsd = 1.0;
+        PetscReal rsd_v[3];
+        //Compute Gating variables
+        //compute gating variables
+        gatevars_update(user->gate_vars,user->gate_vars,user->state_vars,0,user,1);
+        gatevars_update(user->gate_vars_past,user->gate_vars_past,user->state_vars,0,user,1);
         restore_subarray(current_state,user->state_vars);
 
-        if(details|| k%1000==0) {
-            printf("Tol: %.10e: rsd: c: %.10e, phi: %.10e, al: %.10e\n",tol,rsd_v[0],rsd_v[1],rsd_v[2]);
-        }
-        k++;
-    }
-    //Save the one set of variables we solved for (x=1,y=1 because that's the midpoint of the 3x3 system)
+        //Initialize and compute the excitation (it's zeros here)
+        excitation(user,-1.0);
+        PetscReal dt_temp = user->dt;
+        k = 0;
+        user->dt = 0.01;
 
-    extract_subarray(current_state,user->state_vars);
-    PetscReal c[Ni*Nc];
-    PetscReal phi[Nc];
-    PetscReal al[Nc-1];
-    PetscInt comp,ion,x,y;
-    for(comp=0;comp<Nc;comp++){
-        for(ion=0;ion<Ni;ion++){
-            c[c_index(0,0,comp,ion,Nx)]=user->state_vars->c[c_index(0,0,comp,ion,Nx)];
-        }
-        phi[phi_index(0,0,comp,Nx)]=user->state_vars->phi[phi_index(0,0,comp,Nx)];
-    }
-    for(comp=0;comp<Nc-1;comp++){
-        al[al_index(0,0,comp,Nx)] = user->state_vars->alpha[al_index(0,0,comp,Nx)];
-    }
-    user->dt = dt_temp;
-    user->Nx = temp_Nx;
-    user->Ny = temp_Ny;
+        // For 1x1 grid Dcs is zeros
+        memset(user->Dcs,0,sizeof(PetscReal)*2*temp_Nx*temp_Ny*Nc*Ni);
 
-    //Copy over the saved variables.
-    for(x=0;x<temp_Nx;x++){
-        for(y=0;y<temp_Ny;y++){
-            for(comp=0;comp<Nc;comp++){
-                for(ion=0;ion<Ni;ion++){
-                    user->state_vars->c[c_index(x,y,comp,ion,Nx)]=c[c_index(0,0,comp,ion,Nx)];
+        while(rsd > tol && k < 1e5){
+            extract_subarray(current_state,user->state_vars);
+            //Save the "current" aka past state
+            restore_subarray(user->state_vars_past->v,user->state_vars_past);
+            copy_simstate(current_state,user->state_vars_past);
+
+            memcpy(user->state_vars_past->alpha,user->state_vars->alpha,sizeof(PetscReal)*user->Nx*user->Ny*(Nc-1));
+            //Update volume
+            volume_update(user->state_vars,user->state_vars_past,user);
+            //compute diffusion coefficients (Dcs is not used for 1x1)
+            //Bath diffusion
+            diff_coef(user->Dcb,user->state_vars->alpha,Batheps,user);
+            restore_subarray(current_state,user->state_vars);
+
+            // Use own solver since we reuse data structs to update a subset
+            newton_solve(current_state,slvr,user);
+            //Update gating variables
+            extract_subarray(current_state,user->state_vars);
+
+
+            // Set to be "firstpass" (that's the 1)
+            // So that we set to alpha/beta infinity values as if it came to rest
+            gatevars_update(user->gate_vars,user->gate_vars,user->state_vars,user->dt*1e3,user,1);
+
+
+            rsd_v[0] = array_diff_max(user->state_vars->c,user->state_vars_past->c,(size_t) Nx*Ny*Nc*Ni);
+            rsd_v[1] = array_diff_max(user->state_vars->phi,user->state_vars_past->phi,(size_t) Nx*Ny*Nc);
+            rsd_v[2] = array_diff_max(user->state_vars->alpha,user->state_vars_past->alpha,(size_t) Nx*Ny*(Nc-1));
+            rsd = array_max(rsd_v,3);
+            restore_subarray(current_state,user->state_vars);
+
+            if(details || k%1000 == 0){
+                printf("Tol: %.10e: rsd: c: %.10e, phi: %.10e, al: %.10e\n",tol,rsd_v[0],rsd_v[1],rsd_v[2]);
+            }
+            k++;
+        }
+        //Save the one set of variables we solved for (x=1,y=1 because that's the midpoint of the 3x3 system)
+
+        extract_subarray(current_state,user->state_vars);
+        PetscReal c[Ni*Nc];
+        PetscReal phi[Nc];
+        PetscReal al[Nc-1];
+        PetscInt comp,ion,x,y;
+        for(comp = 0; comp < Nc; comp++){
+            for(ion = 0; ion < Ni; ion++){
+                c[c_index(0,0,comp,ion,Nx)] = user->state_vars->c[c_index(0,0,comp,ion,Nx)];
+            }
+            phi[phi_index(0,0,comp,Nx)] = user->state_vars->phi[phi_index(0,0,comp,Nx)];
+        }
+        for(comp = 0; comp < Nc-1; comp++){
+            al[al_index(0,0,comp,Nx)] = user->state_vars->alpha[al_index(0,0,comp,Nx)];
+        }
+        user->dt = dt_temp;
+        user->Nx = temp_Nx;
+        user->Ny = temp_Ny;
+
+        //Copy over the saved variables.
+        for(x = 0; x < temp_Nx; x++){
+            for(y = 0; y < temp_Ny; y++){
+                for(comp = 0; comp < Nc; comp++){
+                    for(ion = 0; ion < Ni; ion++){
+                        user->state_vars->c[c_index(x,y,comp,ion,Nx)] = c[c_index(0,0,comp,ion,Nx)];
+                    }
+                    user->state_vars->phi[phi_index(x,y,comp,Nx)] = phi[phi_index(0,0,comp,Nx)];
                 }
-                user->state_vars->phi[phi_index(x,y,comp,Nx)]=phi[phi_index(0,0,comp,Nx)];
-            }
-            for(comp=0;comp<Nc-1;comp++){
-                user->state_vars->alpha[al_index(x,y,comp,Nx)]=al[al_index(0,0,comp,Nx)];
+                for(comp = 0; comp < Nc-1; comp++){
+                    user->state_vars->alpha[al_index(x,y,comp,Nx)] = al[al_index(0,0,comp,Nx)];
+                }
             }
         }
-    }
-    // Reset gating variables to rest values at this voltage.
-    gatevars_update(user->gate_vars,user->gate_vars,user->state_vars,0,user,1);
-    gatevars_update(user->gate_vars_past,user->gate_vars_past,user->state_vars,0,user,1);
+        // Reset gating variables to rest values at this voltage.
+        gatevars_update(user->gate_vars,user->gate_vars,user->state_vars,0,user,1);
+        gatevars_update(user->gate_vars_past,user->gate_vars_past,user->state_vars,0,user,1);
 
-    restore_subarray(current_state,user->state_vars);
-    free(slvr);
+        restore_subarray(current_state,user->state_vars);
+        free(slvr);
+
+    }else{ // If not spatially uniform
+        PetscReal convtol = 1e-9;
+        extract_subarray(current_state,user->state_vars);
+        tol = convtol;
+        rsd = 1.0;
+        //Compute Gating variables
+        //compute gating variables
+        gatevars_update(user->gate_vars,user->gate_vars,user->state_vars,0,user,1);
+        gatevars_update(user->gate_vars_past,user->gate_vars_past,user->state_vars,0,user,1);
+        restore_subarray(current_state,user->state_vars);
+
+        PetscReal atol,rtol,stol;
+        PetscInt maxit,maxf;
+        SNESGetTolerances(user->slvr->snes,&atol,&rtol,&stol,&maxit,&maxf);
+        // Force SNES solver to only do 1 newton iteration
+        SNESSetTolerances(user->slvr->snes,atol,rtol,stol,1,maxf);
+        PetscReal kspatol,ksprtol,kspdtol;
+        PetscInt kspmaxits;
+
+        KSPGetTolerances(user->slvr->ksp,&ksprtol,&kspatol,&kspdtol,&kspmaxits);
+        KSPSetTolerances(user->slvr->ksp,ksprtol,kspatol,kspdtol,25);
+
+        //Initialize and compute the excitation (it's zeros here)
+        excitation(user,-1.0);
+        PetscReal dt_temp = user->dt;
+        k = 0;
+        user->dt = 0.01;
+        PetscErrorCode ierr;
+        while(rsd>tol && k<1e5){
+            //Save the "current" aka past state
+            ierr = restore_subarray(user->state_vars_past->v, user->state_vars_past);//CHKERRQ(ierr);
+            ierr = copy_simstate(current_state, user->state_vars_past);//CHKERRQ(ierr);
+
+            memcpy(user->state_vars_past->alpha, user->state_vars->alpha,sizeof(PetscReal)*user->Nx*user->Ny*(Nc-1));
+            //Update volume(uses past c values for wflow)
+            ierr = extract_subarray(current_state, user->state_vars);//CHKERRQ(ierr);
+            volume_update(user->state_vars, user->state_vars_past, user);
+
+            //Update diffusion with past
+//        compute diffusion coefficients
+//            diff_coef(user->Dcs,user->state_vars_past->alpha,1,user);
+            diff_coef(user->Dcs,user->state_vars_past->alpha,0,user);
+//        Bath diffusion
+            diff_coef(user->Dcb,user->state_vars_past->alpha,Batheps,user);
+            restore_subarray(current_state,user->state_vars);
+
+            SNESSolve(user->slvr->snes,NULL,current_state);
+            VecAXPY(user->state_vars_past->v,-1.0,current_state);
+            VecNorm(user->state_vars_past->v,NORM_MAX,&rsd);
+//            VecNorm(user->slvr->Res,NORM_MAX,&rsd);
+            rsd=rsd/user->dt;
+
+            extract_subarray(current_state,user->state_vars);
+            gatevars_update(user->gate_vars,user->gate_vars_past,user->state_vars,user->dt*1e3,user,1);
+            gatevars_update(user->gate_vars_past,user->gate_vars_past,user->state_vars,user->dt*1e3,user,1);
+            restore_subarray(current_state,user->state_vars);
+            if(details || k%50 == 0){
+                printf("Tol: %.10e: rsd: c/phi %.10e\n",tol,rsd);
+            }
+            k++;
+
+        }
+        user->dt = dt_temp;
+        //Reset newton tolerances and max iteration count
+        SNESSetTolerances(user->slvr->snes,atol,rtol,stol,maxit,maxf);
+        KSPSetTolerances(user->slvr->ksp,ksprtol,kspatol,kspdtol,kspmaxits);
+    }
+
     printf("Initialization stopped at %.10e in %d iterations\n",rsd,k);
-    if(rsd>tol) {
-        fprintf(stderr, "Did not converge! Continuing anyway...\n");
+    if(rsd > tol){
+        fprintf(stderr,"Did not converge! Continuing anyway...\n");
 //    	exit(EXIT_FAILURE); /* indicate failure.*/
         return;
-    } else {
+    }else{
         return;
     }
 
